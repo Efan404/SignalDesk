@@ -1,0 +1,12 @@
+[Unit]
+Description=SignalDesk Daily Digest
+
+[Service]
+Type=oneshot
+User=efan
+WorkingDirectory=/Users/efan404/Codes/indie_dev/SignalDesk-worktree
+ExecStart=/Users/efan404/Codes/indie_dev/SignalDesk-worktree/run_digest.sh
+Environment=PYTHONPATH=/Users/efan404/Codes/indie_dev/SignalDesk-worktree
+
+[Install]
+WantedBy=multi-user.target
