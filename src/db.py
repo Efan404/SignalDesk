@@ -146,7 +146,7 @@ def get_email_event(event_id: str) -> EmailEvent | None:
             to_addr=row["to_addr"],
             cc_addr=row["cc_addr"],
             subject=row["subject"],
-            timestamp=datetime.fromisoformat(row["timestamp"]),
+            timestamp=datetime.datetime.fromisoformat(row["timestamp"]),
             body_text=row["body_text"],
             permalink=row["permalink"],
         )
@@ -198,5 +198,5 @@ def get_triage_decision(event_id: str) -> TriageDecision | None:
             reasons=row["reasons"].split(","),
             evidence_refs=row["evidence_refs"].split(","),
             route=row["route"],
-            created_at=datetime.fromisoformat(row["created_at"]),
+            created_at=datetime.datetime.fromisoformat(row["created_at"]),
         )

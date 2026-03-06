@@ -29,15 +29,15 @@ def run(max):
 def status():
     """Show recent triage decisions"""
     init_db()
-    db = get_db()
-    rows = db.execute("""
-        SELECT e.subject, t.importance, t.urgency, t.route, t.reasons
-        FROM triage_decisions t
-        JOIN email_events e ON t.event_id = e.event_id
-        ORDER BY e.timestamp DESC
-        LIMIT 20
-    """).fetchall()
-    db.close()
+    with get_db() as conn:
+        cursor = conn.cursor()
+        rows = cursor.execute("""
+            SELECT e.subject, t.importance, t.urgency, t.route, t.reasons
+            FROM triage_decisions t
+            JOIN email_events e ON t.event_id = e.event_id
+            ORDER BY e.timestamp DESC
+            LIMIT 20
+        """).fetchall()
 
     table = Table(title="Recent Triage Decisions")
     table.add_column("Subject", style="cyan")

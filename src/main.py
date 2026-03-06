@@ -4,7 +4,7 @@ from src.ingestor import GmailIngestor
 from src.triage import TriageEngine
 from src.digest import DigestGenerator
 from src.notifier import TelegramNotifier
-from src.db import get_db, init_db
+from src.db import init_db, save_email_event, save_triage_decision
 
 
 async def process_emails(max_results: int = 10) -> dict:
@@ -27,26 +27,9 @@ async def process_emails(max_results: int = 10) -> dict:
         decision = await engine.triage(email)
         decisions.append(decision)
 
-        # Save to DB
-        db = get_db()
-        db.execute("""
-            INSERT OR REPLACE INTO email_events
-            (event_id, provider, thread_id, message_id, from_addr, to_addr, cc_addr, subject, timestamp, body_text, permalink)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """, (email.event_id, email.provider, email.thread_id, email.message_id,
-              email.from_addr, email.to_addr, email.cc_addr, email.subject,
-              email.timestamp.isoformat(), email.body_text, email.permalink))
-
-        db.execute("""
-            INSERT OR REPLACE INTO triage_decisions
-            (event_id, importance, urgency, delegatable, needs_user_decision, reasons, evidence_refs, route)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        """, (decision.event_id, decision.importance, decision.urgency,
-              int(decision.delegatable), int(decision.needs_user_decision),
-              ",".join(decision.reasons), ",".join(decision.evidence_refs),
-              decision.route.value))
-        db.commit()
-        db.close()
+        # Save to DB using封装函数
+        save_email_event(email)
+        save_triage_decision(decision)
 
     # 3. Generate digest
     generator = DigestGenerator()

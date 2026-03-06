@@ -2,7 +2,7 @@
 import json
 import logging
 import httpx
-from src.config import Config
+from src.config import config
 from src.models import EmailEvent, TriageDecision, RouteType
 
 logger = logging.getLogger(__name__)
@@ -28,10 +28,11 @@ Rules:
 """
 
     def __init__(self):
-        config = Config()
         self.base_url = config.litellm_base_url
         self.api_key = config.litellm_api_key
-        self.model = f"openai/{config.litellm_model}"
+        # Avoid double "openai/" prefix if user already includes it
+        model = config.litellm_model
+        self.model = model if model.startswith("openai/") else f"openai/{model}"
 
     async def triage(self, email: EmailEvent) -> TriageDecision:
         """Run triage on a single email"""
