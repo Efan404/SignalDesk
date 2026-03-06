@@ -2,8 +2,12 @@
 import subprocess
 import json
 import uuid
+import base64
+import logging
 from datetime import datetime, timezone
 from src.models import EmailEvent
+
+logger = logging.getLogger(__name__)
 
 
 class GmailIngestor:
@@ -14,11 +18,13 @@ class GmailIngestor:
 
     def fetch_recent_emails(self, max_results: int = 10) -> list[EmailEvent]:
         """Fetch recent emails from Gmail"""
+        if max_results < 1 or max_results > 100:
+            max_results = 10
         cmd = [
             "gws", "gmail", "users", "messages", "list",
             "--params", json.dumps({"maxResults": max_results, "q": "is:unread"})
         ]
-        result = subprocess.run(cmd, capture_output=True, text=True)
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
 
         if result.returncode != 0:
             raise RuntimeError(f"gws failed: {result.stderr}")
@@ -39,9 +45,10 @@ class GmailIngestor:
             "gws", "gmail", "users", "messages", "get",
             "--params", json.dumps({"id": message_id, "format": "full"})
         ]
-        result = subprocess.run(cmd, capture_output=True, text=True)
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
 
         if result.returncode != 0:
+            logger.warning(f"Failed to fetch message {message_id}: {result.stderr}")
             return None
 
         data = json.loads(result.stdout)
@@ -64,9 +71,9 @@ class GmailIngestor:
             message_id=message_id,
             from_addr=header_dict.get("from", ""),
             to_addr=header_dict.get("to", ""),
-            cc_addr=header_dict.get("cc", ""),
             subject=header_dict.get("subject", ""),
             timestamp=timestamp,
+            cc_addr=header_dict.get("cc", ""),
             body_text=body_text,
             permalink=f"https://mail.google.com/mail?ui=1&message_id={message_id}"
         )
@@ -76,9 +83,14 @@ class GmailIngestor:
         if "parts" in payload:
             for part in payload["parts"]:
                 if part.get("mimeType") == "text/plain":
-                    return part.get("body", {}).get("data", "")
+                    data = part.get("body", {}).get("data", "")
+                    if data:
+                        return base64.urlsafe_b64decode(data).decode("utf-8", errors="replace")
                 if "parts" in part:
                     result = self._extract_body(part)
                     if result:
                         return result
-        return payload.get("body", {}).get("data", "")
+        data = payload.get("body", {}).get("data", "")
+        if data:
+            return base64.urlsafe_b64decode(data).decode("utf-8", errors="replace")
+        return ""
