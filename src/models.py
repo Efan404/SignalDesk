@@ -1,10 +1,10 @@
 """Data models for SignalDesk."""
+import datetime
 from dataclasses import dataclass
-from datetime import datetime, timezone
-from enum import Enum
+from enum import StrEnum, Enum
 
 
-class RouteType(str, Enum):
+class RouteType(StrEnum, Enum):
     """Routing types for triage decisions."""
 
     PUSH_HIGH = "PUSH_HIGH"
@@ -47,7 +47,7 @@ class TriageDecision:
 
     def __post_init__(self):
         if self.created_at is None:
-            self.created_at = datetime.now(timezone.utc)
+            self.created_at = datetime.datetime.now(tz=datetime.UTC)
 
 
 @dataclass

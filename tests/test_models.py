@@ -1,5 +1,4 @@
-import pytest
-from src.models import TriageDecision, EmailEvent
+from src.models import EmailEvent, TriageDecision
 
 def test_triage_decision_creation():
     decision = TriageDecision(

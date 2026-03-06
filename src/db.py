@@ -1,11 +1,11 @@
 """Database functions for SignalDesk."""
+import datetime
 import sqlite3
+from collections.abc import Generator
 from contextlib import contextmanager
-from datetime import datetime, timezone
-from typing import Generator
 
 from src.config import config
-from src.models import EmailEvent, Task, TriageDecision
+from src.models import EmailEvent, TriageDecision
 
 
 def get_db_connection() -> sqlite3.Connection:
@@ -171,7 +171,7 @@ def save_triage_decision(decision: TriageDecision) -> None:
                 ",".join(decision.reasons),
                 ",".join(decision.evidence_refs),
                 decision.route,
-                decision.created_at.isoformat() if decision.created_at else datetime.now(timezone.utc).isoformat(),
+                decision.created_at.isoformat() if decision.created_at else datetime.datetime.now(tz=datetime.UTC).isoformat(),
             ),
         )
         conn.commit()
