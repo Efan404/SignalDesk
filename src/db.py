@@ -5,7 +5,7 @@ from collections.abc import Generator
 from contextlib import contextmanager
 
 from src.config import config
-from src.models import EmailEvent, TriageDecision
+from src.models import EmailEvent, TriageDecision, UserTask
 
 
 def get_db_connection() -> sqlite3.Connection:
@@ -81,6 +81,18 @@ def init_db() -> None:
                 user_feedback TEXT,
                 created_at TEXT DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (source_event_id) REFERENCES email_events (event_id)
+            )
+        """)
+
+        # User tasks table (for Telegram bot)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS user_tasks (
+                task_id TEXT PRIMARY KEY,
+                goal TEXT NOT NULL,
+                due TEXT,
+                reminder TEXT,
+                status TEXT NOT NULL DEFAULT 'pending',
+                created_at TEXT NOT NULL
             )
         """)
 
@@ -200,3 +212,40 @@ def get_triage_decision(event_id: str) -> TriageDecision | None:
             route=row["route"],
             created_at=datetime.datetime.fromisoformat(row["created_at"]),
         )
+
+
+def save_user_task(task_id: str, goal: str, due: str | None = None,
+                   reminder: str | None = None, status: str = "pending") -> None:
+    """Save a user task to database."""
+    with get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute("""
+            INSERT OR REPLACE INTO user_tasks (task_id, goal, due, reminder, status, created_at)
+            VALUES (?, ?, ?, ?, ?, ?)
+        """, (task_id, goal, due, reminder, status, datetime.datetime.now(tz=datetime.UTC).isoformat()))
+        conn.commit()
+
+
+def get_user_tasks(status: str | None = None) -> list[UserTask]:
+    """Get all user tasks, optionally filtered by status."""
+    with get_db() as conn:
+        cursor = conn.cursor()
+        if status:
+            cursor.execute("""
+                SELECT task_id, goal, due, reminder, status, created_at
+                FROM user_tasks WHERE status = ? ORDER BY created_at DESC
+            """, (status,))
+        else:
+            cursor.execute("""
+                SELECT task_id, goal, due, reminder, status, created_at
+                FROM user_tasks ORDER BY created_at DESC
+            """)
+        rows = cursor.fetchall()
+        return [UserTask(
+            task_id=row[0],
+            goal=row[1],
+            due=row[2],
+            reminder=row[3],
+            status=row[4],
+            created_at=datetime.datetime.fromisoformat(row[5]) if row[5] else None
+        ) for row in rows]
