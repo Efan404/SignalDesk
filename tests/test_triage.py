@@ -9,8 +9,7 @@ def test_triage_engine_initialization():
     assert engine.model == "openai/gpt-4o-mini"
 
 
-@pytest.mark.asyncio
-async def test_triage_decision_structure():
+def test_triage_decision_structure():
     engine = TriageEngine()
     email = EmailEvent(
         event_id="test-123",
