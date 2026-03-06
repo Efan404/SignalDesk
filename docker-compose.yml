@@ -1,40 +1,32 @@
 version: "3.8"
 
 services:
-  bot:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    container_name: signaldesk-bot
-    restart: unless-stopped
-    env_file:
-      - .env
-    volumes:
-      - ./data:/app/data
-    command: python -m src.cli bot
-    networks:
-      - signaldesk
-
-  digest:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    container_name: signaldesk-digest
-    restart: unless-stopped
-    env_file:
-      - .env
-    volumes:
-      - ./data:/app/data
-    # Run digest daily at 20:00 (use cron schedule)
-    command: >
-      sh -c "while true; do
-        sleep $$((86400 - $$(date +%s) % 86400));
-        python -m src.cli digest;
-        sleep 60;
-      done"
-    networks:
-      - signaldesk
-
-networks:
   signaldesk:
-    driver: bridge
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: signaldesk
+    restart: always
+    env_file:
+      - .env
+    volumes:
+      - signaldesk-data:/app/data
+    ports:
+      - "8000:8000"
+    # Coolify 会自动运行 command
+    command: >
+      sh -c "
+        # Run bot in background, main process as digest scheduler
+        python -m src.cli bot &
+        # Sleep until 20:00 then run digest
+        while true; do
+          TARGET=\$(date -d '20:00' +%s)
+          NOW=\$(date +%s)
+          [ \$TARGET -lt \$NOW ] && TARGET=\$((\$TARGET + 86400))
+          sleep \$((TARGET - NOW))
+          python -m src.cli digest || true
+        done
+      "
+
+volumes:
+  signaldesk-data:
