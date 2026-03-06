@@ -11,9 +11,8 @@ services:
       - .env
     volumes:
       - signaldesk-data:/app/data
-    ports:
-      - "8000:8000"
-    # Coolify 会自动运行 command
+    # 不需要暴露端口！Telegram Bot 使用 polling 模式，
+    # 容器主动拉取消息，不需要公网访问
     command: >
       sh -c "
         # Run bot in background, main process as digest scheduler
