@@ -6,6 +6,7 @@ from rich.table import Table
 from src.main import process_emails
 from src.db import get_db, init_db
 from src.config import config
+from src.bot import run_bot
 
 console = Console()
 
@@ -75,6 +76,13 @@ def digest():
 
     notifier = TelegramNotifier()
     notifier.send_sync(digest)
+
+
+@cli.command()
+def bot():
+    """Start Telegram bot"""
+    console.print("[bold green]Starting SignalDesk Bot...[/bold green]")
+    run_bot()
 
 
 if __name__ == "__main__":
