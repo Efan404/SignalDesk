@@ -7,30 +7,28 @@ from enum import Enum
 class RouteType(str, Enum):
     """Routing types for triage decisions."""
 
+    PUSH_HIGH = "PUSH_HIGH"
+    PUSH_NORMAL = "PUSH_NORMAL"
     DIGEST_EVENING = "DIGEST_EVENING"
-    DIGEST_MORNING = "DIGEST_MORNING"
-    IMMEDIATE = "IMMEDIATE"
+    SILENT = "SILENT"
     DELEGATE = "DELEGATE"
-    ARCHIVE = "ARCHIVE"
 
 
 @dataclass
 class EmailEvent:
     """Email event from Gmail API."""
 
-    id: str
+    event_id: str
+    provider: str  # e.g., "gmail"
     thread_id: str
+    message_id: str
+    from_addr: str
+    to_addr: str
     subject: str
-    sender: str
-    sender_email: str
-    snippet: str
-    received_at: datetime
-    is_read: bool = False
-    labels: list[str] = None
-
-    def __post_init__(self):
-        if self.labels is None:
-            self.labels = []
+    timestamp: datetime
+    cc_addr: str | None = None
+    body_text: str | None = None
+    permalink: str | None = None
 
 
 @dataclass
@@ -50,3 +48,19 @@ class TriageDecision:
     def __post_init__(self):
         if self.created_at is None:
             self.created_at = datetime.now(timezone.utc)
+
+
+@dataclass
+class Task:
+    """Task created from a triage decision."""
+
+    task_id: str
+    source_event_id: str
+    thread_id: str
+    goal: str
+    status: str = "pending"  # pending, in_progress, completed, failed
+    constraints: str | None = None
+    inputs: str | None = None
+    bub_session_ref: str | None = None
+    outputs: str | None = None
+    user_feedback: str | None = None

@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 from typing import Generator
 
 from src.config import config
-from src.models import EmailEvent, TriageDecision
+from src.models import EmailEvent, Task, TriageDecision
 
 
 def get_db_connection() -> sqlite3.Connection:
@@ -34,15 +34,17 @@ def init_db() -> None:
         # Email events table
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS email_events (
-                id TEXT PRIMARY KEY,
+                event_id TEXT PRIMARY KEY,
+                provider TEXT NOT NULL,
                 thread_id TEXT NOT NULL,
+                message_id TEXT NOT NULL,
+                from_addr TEXT NOT NULL,
+                to_addr TEXT NOT NULL,
+                cc_addr TEXT,
                 subject TEXT NOT NULL,
-                sender TEXT NOT NULL,
-                sender_email TEXT NOT NULL,
-                snippet TEXT,
-                received_at TEXT NOT NULL,
-                is_read INTEGER DEFAULT 0,
-                labels TEXT,
+                timestamp TEXT NOT NULL,
+                body_text TEXT,
+                permalink TEXT,
                 created_at TEXT DEFAULT CURRENT_TIMESTAMP
             )
         """)
@@ -60,16 +62,40 @@ def init_db() -> None:
                 evidence_refs TEXT NOT NULL,
                 route TEXT NOT NULL,
                 created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY (event_id) REFERENCES email_events (id)
+                FOREIGN KEY (event_id) REFERENCES email_events (event_id)
+            )
+        """)
+
+        # Tasks table
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS tasks (
+                task_id TEXT PRIMARY KEY,
+                source_event_id TEXT NOT NULL,
+                thread_id TEXT NOT NULL,
+                goal TEXT NOT NULL,
+                constraints TEXT,
+                inputs TEXT,
+                status TEXT NOT NULL DEFAULT 'pending',
+                bub_session_ref TEXT,
+                outputs TEXT,
+                user_feedback TEXT,
+                created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (source_event_id) REFERENCES email_events (event_id)
             )
         """)
 
         # Create indexes
         cursor.execute(
-            "CREATE INDEX IF NOT EXISTS idx_email_received_at ON email_events(received_at)"
+            "CREATE INDEX IF NOT EXISTS idx_email_timestamp ON email_events(timestamp)"
         )
         cursor.execute(
             "CREATE INDEX IF NOT EXISTS idx_triage_event_id ON triage_decisions(event_id)"
+        )
+        cursor.execute(
+            "CREATE INDEX IF NOT EXISTS idx_tasks_source_event_id ON tasks(source_event_id)"
+        )
+        cursor.execute(
+            "CREATE INDEX IF NOT EXISTS idx_tasks_status ON tasks(status)"
         )
 
         conn.commit()
@@ -82,19 +108,21 @@ def save_email_event(event: EmailEvent) -> None:
         cursor.execute(
             """
             INSERT OR REPLACE INTO email_events
-            (id, thread_id, subject, sender, sender_email, snippet, received_at, is_read, labels)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            (event_id, provider, thread_id, message_id, from_addr, to_addr, cc_addr, subject, timestamp, body_text, permalink)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
-                event.id,
+                event.event_id,
+                event.provider,
                 event.thread_id,
+                event.message_id,
+                event.from_addr,
+                event.to_addr,
+                event.cc_addr,
                 event.subject,
-                event.sender,
-                event.sender_email,
-                event.snippet,
-                event.received_at.isoformat(),
-                1 if event.is_read else 0,
-                ",".join(event.labels),
+                event.timestamp.isoformat(),
+                event.body_text,
+                event.permalink,
             ),
         )
         conn.commit()
@@ -104,21 +132,23 @@ def get_email_event(event_id: str) -> EmailEvent | None:
     """Get an email event by ID."""
     with get_db() as conn:
         cursor = conn.cursor()
-        cursor.execute("SELECT * FROM email_events WHERE id = ?", (event_id,))
+        cursor.execute("SELECT * FROM email_events WHERE event_id = ?", (event_id,))
         row = cursor.fetchone()
         if row is None:
             return None
 
         return EmailEvent(
-            id=row["id"],
+            event_id=row["event_id"],
+            provider=row["provider"],
             thread_id=row["thread_id"],
+            message_id=row["message_id"],
+            from_addr=row["from_addr"],
+            to_addr=row["to_addr"],
+            cc_addr=row["cc_addr"],
             subject=row["subject"],
-            sender=row["sender"],
-            sender_email=row["sender_email"],
-            snippet=row["snippet"],
-            received_at=datetime.fromisoformat(row["received_at"]),
-            is_read=bool(row["is_read"]),
-            labels=row["labels"].split(",") if row["labels"] else [],
+            timestamp=datetime.fromisoformat(row["timestamp"]),
+            body_text=row["body_text"],
+            permalink=row["permalink"],
         )
 
 
