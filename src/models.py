@@ -64,3 +64,19 @@ class Task:
     bub_session_ref: str | None = None
     outputs: str | None = None
     user_feedback: str | None = None
+
+
+@dataclass
+class UserTask:
+    """Task created by user via Telegram."""
+
+    task_id: str
+    goal: str
+    due: str | None = None
+    reminder: str | None = None
+    status: str = "pending"
+    created_at: datetime | None = None
+
+    def __post_init__(self):
+        if self.created_at is None:
+            self.created_at = datetime.datetime.now(tz=datetime.UTC)
