@@ -15,3 +15,6 @@ def test_save_and_get_user_task():
 
     assert task is not None
     assert task.goal == "测试任务"
+    assert task.due == "2026-03-15"
+    assert task.reminder == "daily at 10:00"
+    assert task.status == "pending"
