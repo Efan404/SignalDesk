@@ -1,6 +1,8 @@
 import pytest
+import uuid
 from unittest.mock import patch, MagicMock
 from src.main import process_emails
+from src.db import save_user_task, get_user_tasks, init_db
 
 
 @pytest.mark.asyncio
@@ -13,3 +15,22 @@ async def test_process_emails_empty():
 
         result = await process_emails(max_results=1)
     assert isinstance(result, dict)
+
+
+def test_task_creation_flow():
+    """Test the full task creation flow."""
+    init_db()  # Ensure tables exist
+
+    # Create a task
+    task_id = str(uuid.uuid4())
+    save_user_task(task_id, "测试任务", "2026-03-20", "daily at 9:00")
+
+    # Retrieve it
+    tasks = get_user_tasks()
+    task = next((t for t in tasks if t.task_id == task_id), None)
+
+    assert task is not None
+    assert task.goal == "测试任务"
+    assert task.due == "2026-03-20"
+    assert task.reminder == "daily at 9:00"
+    assert task.status == "pending"
