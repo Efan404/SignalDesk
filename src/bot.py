@@ -96,13 +96,17 @@ async def confirm_task(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
         due = context.user_data.get("due")
         reminder = context.user_data.get("reminder")
 
-        save_user_task(task_id, goal, due, reminder)
+        try:
+            save_user_task(task_id, goal, due, reminder)
+            await update.message.reply_text(
+                f"✅ 任务已创建！\n\n"
+                f"ID: {task_id}\n"
+                f"目标: {goal}"
+            )
+        except Exception as e:
+            logger.error(f"Failed to save task: {e}")
+            await update.message.reply_text("❌ 保存失败，请重试。")
 
-        await update.message.reply_text(
-            f"✅ 任务已创建！\n\n"
-            f"ID: {task_id}\n"
-            f"目标: {goal}"
-        )
     else:
         await update.message.reply_text("已取消任务创建。")
 
@@ -120,7 +124,12 @@ async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
 
 async def list_tasks(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """List all user tasks."""
-    tasks = get_user_tasks()
+    try:
+        tasks = get_user_tasks()
+    except Exception as e:
+        logger.error(f"Failed to get tasks: {e}")
+        await update.message.reply_text("❌ 获取任务失败，请重试。")
+        return
 
     if not tasks:
         await update.message.reply_text("暂无任务。")
