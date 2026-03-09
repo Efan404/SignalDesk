@@ -1,3 +1,5 @@
+import typing
+
 from src.models import EmailEvent, TriageDecision
 
 def test_user_task_creation():
@@ -25,3 +27,8 @@ def test_triage_decision_creation():
     )
     assert decision.event_id == "test-123"
     assert decision.route == "DIGEST_EVENING"
+
+
+def test_triage_decision_type_hints_resolve():
+    hints = typing.get_type_hints(TriageDecision)
+    assert hints["created_at"] is not None

@@ -1,5 +1,5 @@
 """Data models for SignalDesk."""
-import datetime
+from datetime import UTC, datetime
 from dataclasses import dataclass
 from enum import StrEnum, Enum
 
@@ -47,7 +47,7 @@ class TriageDecision:
 
     def __post_init__(self):
         if self.created_at is None:
-            self.created_at = datetime.datetime.now(tz=datetime.UTC)
+            self.created_at = datetime.now(tz=UTC)
 
 
 @dataclass
@@ -79,4 +79,4 @@ class UserTask:
 
     def __post_init__(self):
         if self.created_at is None:
-            self.created_at = datetime.datetime.now(tz=datetime.UTC)
+            self.created_at = datetime.now(tz=UTC)
